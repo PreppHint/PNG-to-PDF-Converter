@@ -1,0 +1,362 @@
+<p style="text-align: center;"><b>PNG to PDF Converter</b> is a fast and easy online tool that lets you convert PNG images to PDF. Simply upload or drag and drop PNG files, and the tool instantly creates a PDF. You can reorder images, choose page size and orientation, and download in PDF format. Created by team<span class="company fw-bold"><a href="https://www.youtube.com/@prepphint" style="text-decoration-line: none;"> PreppHint</a></span>.</p>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/PreppHint/PreppHint@main/css/converter.css">
+<style>
+.custom-options {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.custom-options select {
+    display: inline-block;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: auto;
+    box-sizing: border-box;
+}
+
+/* Tablets landscape (768px - 991px) */
+@media screen and (max-width: 991px) {
+    .custom-options select {
+        font-size: 15px;
+        padding: 9px;
+    }
+}
+
+/* Tablets portrait / large phones (576px - 767px) */
+@media screen and (max-width: 767px) {
+    .custom-options {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .custom-options select {
+        font-size: 14px;
+        padding: 8px;
+    }
+}
+
+/* Small phones (401px - 575px) */
+@media screen and (max-width: 575px) {
+    .custom-options {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 15px;
+    }
+    .custom-options select {
+        width: 100%;
+        font-size: 13px;
+        padding: 8px;
+    }
+}
+
+/* Extra small phones (320px - 400px) */
+@media screen and (max-width: 400px) {
+    .custom-options {
+        gap: 6px;
+        margin-top: 12px;
+    }
+    .custom-options select {
+        font-size: 12px;
+        padding: 7px;
+    }
+}
+
+/* Very small screens (below 320px) */
+@media screen and (max-width: 319px) {
+    .custom-options {
+        gap: 5px;
+        margin-top: 10px;
+    }
+    .custom-options select {
+        font-size: 11px;
+        padding: 6px;
+    }
+}
+</style>
+        <div class="custom-upload-container">
+            <div class="custom-preview-container" id="previewContainer"></div>
+            <div class="custom-upload-area" id="uploadArea">
+                <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgg_ouhpX4UtbX0KBYXHkXcDk-pOfCHuHt7Adh73oK5PipdyNLvrzX2e4Ufmy9HB1rHqYM5TEViq-1PrvZ6tFHp5C9R4BeMwnsZMdWLrFEJ_yplQ5eN2hzB49uHRrhuuRQZnKo0Vo8Zm6zyT2IAwm8z3hezH2Dc2tZiiHmSJASKbkDT0YyJHDiOEgokRKBD/s1600/upload.webp" alt="Upload Icon" class="custom-upload-icon" id="uploadIcon">
+                <p id="uploadText">Drag & Drop to upload Files or</p>
+                <button class="custom-browse-button">Browse Files</button>
+                <input type="file" id="fileInput" accept="image/png" multiple hidden>
+            </div>
+            <div class="spinner-overlay" id="spinnerOverlay">
+                <div class="spinner" id="spinner"></div>
+            </div>
+            <div class="error-message" id="errorMessage" style="display: none;">Please upload PNG images.</div>
+        </div>
+        <div class="custom-options">
+            <select name="pagesize" id="pagesize" class="input option">
+                <option value="fit">Fit (Same page size as image)</option>
+                <option value="A4">A4 (297x210 mm)</option>
+                <option value="letter">US Letter (215x279.4 mm)</option>
+            </select>
+            <select name="orientation" id="orientation" class="input option" disabled>
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+            </select>
+        </div>
+    </div>
+    <div class="container">
+    
+<div class="custom-button-container">
+            <button class="custom-convert-button" id="convertBtn" disabled>Convert to PDF</button>
+            <a id="downloadBtn" class="custom-download-button" style="display: none;">Download PDF</a>
+        </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script>
+        /*
+(C) prepphint.com all right reserved.
+*/
+        document.querySelector('.custom-browse-button').addEventListener('click', function() {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        });
+
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadArea.classList.remove('dragover');
+            const files = event.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        document.getElementById('pagesize').addEventListener('change', function() {
+            disableDownloadButton();
+            const pageSize = this.value;
+            const orientationSelect = document.getElementById('orientation');
+            if (pageSize === 'fit') {
+                orientationSelect.disabled = true;
+                orientationSelect.value = 'portrait';
+            } else {
+                orientationSelect.disabled = false;
+            }
+        });
+
+        document.getElementById('orientation').addEventListener('change', function() {
+            disableDownloadButton();
+        });
+
+        document.getElementById('convertBtn').addEventListener('click', function() {
+            convertToPDF();
+        });
+
+        let filesToConvert = [];
+        let filesDataURLs = [];
+
+        function handleFiles(files) {
+            disableDownloadButton();
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.style.display = 'flex';
+
+            for (const file of files) {
+                if (file.type === 'image/png') {
+                    filesToConvert.push(file);
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const imgWrapper = document.createElement('div');
+                        imgWrapper.style.position = 'relative';
+                        imgWrapper.setAttribute('draggable', 'true');
+
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.classList.add('custom-preview-image');
+
+                        filesDataURLs.push(e.target.result);
+
+                        const removeButton = document.createElement('button');
+                        removeButton.classList.add('remove-button');
+                        removeButton.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M16.95 8.464a1 1 0 1 0-1.414-1.414L12 10.586 8.465 7.05A1 1 0 0 0 7.05 8.464L10.586 12 7.05 15.536a1 1 0 1 0 1.415 1.414L12 13.414l3.536 3.536a1 1 0 1 0 1.414-1.414L13.414 12z" fill="#000"/></svg>`;
+                        removeButton.addEventListener('click', function() {
+                            const index = filesToConvert.findIndex(f => f.name === file.name);
+                            if (index > -1) {
+                                filesToConvert.splice(index, 1);
+                                filesDataURLs.splice(index, 1);
+                            }
+                            imgWrapper.remove();
+                            disableDownloadButton();
+                            if (filesToConvert.length === 0) {
+                                document.getElementById('convertBtn').disabled = true;
+                                hidePreviewContainer();
+                                showUploadIcon();
+                                hideDownloadButton();
+                            }
+                        });
+
+                        imgWrapper.appendChild(img);
+                        imgWrapper.appendChild(removeButton);
+                        previewContainer.appendChild(imgWrapper);
+
+                        new Sortable(previewContainer, {
+                            animation: 150,
+                            onEnd: function () {
+                                const newOrder = Array.from(previewContainer.children).map(child => child.querySelector('img').src);
+                                filesToConvert = newOrder.map(src => {
+                                    const index = filesDataURLs.indexOf(src);
+                                    return filesToConvert[index];
+                                });
+                                disableDownloadButton();
+                            }
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            if (filesToConvert.length > 0) {
+                document.getElementById('errorMessage').style.display = 'none';
+                document.getElementById('convertBtn').disabled = false;
+                hideUploadIcon();
+            } else {
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('convertBtn').disabled = true;
+            }
+        }
+
+        async function convertToPDF() {
+            if (filesToConvert.length === 0) return;
+
+            const spinnerOverlay = document.getElementById('spinnerOverlay');
+            const downloadButton = document.getElementById('downloadBtn');
+
+            hideDownloadButton();
+            spinnerOverlay.style.display = 'flex';
+
+            const pageSize = document.getElementById('pagesize').value;
+            const orientation = document.getElementById('orientation').value;
+            const padding = 5; // Padding in mm
+
+            try {
+                const { jsPDF } = window.jspdf;
+                let pdf;
+                const firstFileName = filesToConvert[0].name.split('.')[0];
+
+                for (let i = 0; i < filesToConvert.length; i++) {
+                    const file = filesToConvert[i];
+                    const imgDataUrl = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.readAsDataURL(file);
+                    });
+
+                    const image = new Image();
+                    image.src = imgDataUrl;
+
+                    await new Promise((resolve) => {
+                        image.onload = function() {
+                            const width = image.width;
+                            const height = image.height;
+                            
+                            if (pageSize === 'fit') {
+                                if (!pdf) {
+                                    pdf = new jsPDF({ orientation: width > height ? 'landscape' : 'portrait', unit: 'px', format: [width, height] });
+                                } else {
+                                    pdf.addPage([width, height], width > height ? 'landscape' : 'portrait');
+                                }
+                                pdf.addImage(image, 'PNG', 0, 0, width, height);
+                            } else {
+                                let docWidth = 210;
+                                let docHeight = 297;
+                                if (pageSize === 'letter') {
+                                    docWidth = 215.9;
+                                    docHeight = 279.4;
+                                }
+                                if (pageSize === 'A4' && orientation === 'portrait') {
+                                    docWidth = 210;
+                                    docHeight = 297;
+                                }
+                                if (orientation === 'landscape') {
+                                    [docWidth, docHeight] = [docHeight, docWidth];
+                                }
+                                if (!pdf) {
+                                    pdf = new jsPDF({ orientation, unit: 'mm', format: [docWidth, docHeight] });
+                                } else {
+                                    pdf.addPage([docWidth, docHeight], orientation);
+                                }
+                                const aspectRatio = width / height;
+                                let imgWidth = docWidth - 2 * padding;
+                                let imgHeight = (docWidth - 2 * padding) / aspectRatio;
+                                if (imgHeight > (docHeight - 2 * padding)) {
+                                    imgHeight = docHeight - 2 * padding;
+                                    imgWidth = (docHeight - 2 * padding) * aspectRatio;
+                                }
+                                const xOffset = (docWidth - imgWidth) / 2;
+                                const yOffset = (docHeight - imgHeight) / 2;
+                                pdf.addImage(image, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+                            }
+                            resolve();
+                        };
+                    });
+                }
+
+                const pdfBlob = pdf.output('blob');
+                const url = URL.createObjectURL(pdfBlob);
+                downloadButton.href = url;
+                downloadButton.download = `${firstFileName}_prepphint.com.pdf`;
+
+                setTimeout(() => {
+                    showDownloadButton();
+                }, 1000); // Ensure the spinner is shown for at least 1 second
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'An error occurred during conversion. Please try again.';
+                document.getElementById('errorMessage').style.display = 'block';
+            } finally {
+                setTimeout(() => {
+                    spinnerOverlay.style.display = 'none';
+                }, 1000);
+            }
+        }
+
+        function disableDownloadButton() {
+            const downloadButton = document.getElementById('downloadBtn');
+            downloadButton.style.display = 'none';
+        }
+
+        function hideDownloadButton() {
+            const downloadButton = document.getElementById('downloadBtn');
+            downloadButton.style.display = 'none';
+        }
+
+        function showDownloadButton() {
+            const downloadButton = document.getElementById('downloadBtn');
+            downloadButton.style.display = 'inline-block';
+        }
+
+        function hideUploadIcon() {
+            const uploadIcon = document.getElementById('uploadIcon');
+            uploadIcon.style.display = 'none';
+        }
+
+        function showUploadIcon() {
+            const uploadIcon = document.getElementById('uploadIcon');
+            uploadIcon.style.display = 'block';
+        }
+
+        function hidePreviewContainer() {
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.style.display = 'none';
+        }
+    </script>
